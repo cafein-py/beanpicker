@@ -1,0 +1,255 @@
+import datetime
+import hashlib
+import json
+
+import httpx
+import pytest
+from shapely.geometry import box
+
+from beanpicker.catalog import TOKEN_ENV_VAR, MobilityDatabase
+from beanpicker.catalog._client import _bounds
+from beanpicker.catalog._models import Dataset
+from beanpicker.exceptions import DownloadError, MissingTokenError
+
+FEED_RECORD = {
+    "id": "mdb-1",
+    "provider": "Helsinki Region Transport",
+    "status": "active",
+    "official": True,
+    "source_info": {
+        "producer_url": "https://example.com/gtfs.zip",
+        "license_url": "https://example.com/license",
+    },
+    "locations": [{"country_code": "FI", "municipality": "Helsinki"}],
+}
+
+DATASET_RECORD = {
+    "id": "mdb-1-202606",
+    "feed_id": "mdb-1",
+    "hosted_url": "https://files.example.com/mdb-1-202606.zip",
+    "downloaded_at": "2026-06-20T03:00:00Z",
+    "hash": None,
+    "service_date_range_start": "2026-06-15",
+    "service_date_range_end": "2026-12-13",
+    "validation_report": {"url_json": "https://files.example.com/report.json"},
+}
+
+OLD_DATASET_RECORD = {
+    "id": "mdb-1-202501",
+    "feed_id": "mdb-1",
+    "hosted_url": "https://files.example.com/mdb-1-202501.zip",
+    "downloaded_at": "2025-01-05T03:00:00Z",
+    "hash": None,
+    "service_date_range_start": "2025-01-01",
+    "service_date_range_end": "2025-06-30",
+    "validation_report": None,
+}
+
+
+def make_handler(routes, requests=None):
+    """MockTransport handler serving the token endpoint plus given routes."""
+
+    def handler(request):
+        if requests is not None:
+            requests.append(request)
+        if request.url.path == "/v1/tokens":
+            return httpx.Response(
+                200, json={"access_token": "access-abc", "expires_in": 3600}
+            )
+        entry = routes.get(request.url.path)
+        if entry is None:
+            return httpx.Response(404, json={"detail": "not found"})
+        if callable(entry):
+            return entry(request)
+        return httpx.Response(200, json=entry)
+
+    return handler
+
+
+def make_db(routes, tmp_path, requests=None, token="refresh-xyz"):
+    transport = httpx.MockTransport(make_handler(routes, requests))
+    db = MobilityDatabase(token, cache_dir=tmp_path, transport=transport)
+    db._retry_wait = 0.0
+    return db
+
+
+def api_requests(requests, path):
+    return [r for r in requests if r.url.path == path]
+
+
+def test_search_feeds_bbox_and_auth(tmp_path):
+    requests = []
+    routes = {"/v1/gtfs_feeds": [FEED_RECORD]}
+    with make_db(routes, tmp_path, requests) as db:
+        feeds = db.search_feeds(aoi=box(24.6, 60.1, 25.2, 60.4))
+
+    assert len(feeds) == 1
+    feed = feeds[0]
+    assert feed.id == "mdb-1"
+    assert feed.provider == "Helsinki Region Transport"
+    assert feed.official is True
+    assert feed.license_url == "https://example.com/license"
+
+    (request,) = api_requests(requests, "/v1/gtfs_feeds")
+    params = dict(request.url.params)
+    assert params["dataset_latitudes"] == "60.1,60.4"
+    assert params["dataset_longitudes"] == "24.6,25.2"
+    assert params["bounding_filter_method"] == "partially_enclosed"
+    assert request.headers["Authorization"] == "Bearer access-abc"
+
+
+def test_search_feeds_status_filter(tmp_path):
+    deprecated = dict(FEED_RECORD, id="mdb-2", status="deprecated")
+    routes = {"/v1/gtfs_feeds": [FEED_RECORD, deprecated]}
+    with make_db(routes, tmp_path) as db:
+        assert [f.id for f in db.search_feeds(country_code="FI")] == ["mdb-1"]
+        both = db.search_feeds(country_code="FI", status=None)
+        assert [f.id for f in both] == ["mdb-1", "mdb-2"]
+
+
+def test_search_feeds_invalid_enclosure(tmp_path):
+    with make_db({}, tmp_path) as db:
+        with pytest.raises(ValueError):
+            db.search_feeds(aoi=(24.6, 60.1, 25.2, 60.4), enclosure="overlapping")
+
+
+def test_bounds_accepts_tuple_and_rejects_junk():
+    assert _bounds((24.6, 60.1, 25.2, 60.4)) == (24.6, 60.1, 25.2, 60.4)
+    with pytest.raises(ValueError):
+        _bounds("helsinki")
+    with pytest.raises(ValueError):
+        _bounds((24.6, 60.1))
+
+
+def test_pagination(tmp_path):
+    records = [dict(FEED_RECORD, id=f"mdb-{i}") for i in range(150)]
+    requests = []
+
+    def feeds_endpoint(request):
+        offset = int(request.url.params["offset"])
+        limit = int(request.url.params["limit"])
+        return httpx.Response(200, json=records[offset : offset + limit])
+
+    routes = {"/v1/gtfs_feeds": feeds_endpoint}
+    with make_db(routes, tmp_path, requests) as db:
+        feeds = db.search_feeds(country_code="FI", limit=150)
+
+    assert len(feeds) == 150
+    pages = api_requests(requests, "/v1/gtfs_feeds")
+    assert [(p.url.params["offset"], p.url.params["limit"]) for p in pages] == [
+        ("0", "100"),
+        ("100", "50"),
+    ]
+
+
+def test_datasets_sorted_newest_first(tmp_path):
+    routes = {"/v1/gtfs_feeds/mdb-1/datasets": [OLD_DATASET_RECORD, DATASET_RECORD]}
+    with make_db(routes, tmp_path) as db:
+        datasets = db.datasets("mdb-1")
+    assert [d.id for d in datasets] == ["mdb-1-202606", "mdb-1-202501"]
+
+
+def test_dataset_for_picks_covering_dataset(tmp_path):
+    routes = {"/v1/gtfs_feeds/mdb-1/datasets": [DATASET_RECORD, OLD_DATASET_RECORD]}
+    with make_db(routes, tmp_path) as db:
+        assert db.dataset_for("mdb-1", "2026-09-01").id == "mdb-1-202606"
+        assert db.dataset_for("mdb-1", "2026-09-01 08:00").id == "mdb-1-202606"
+        assert db.dataset_for("mdb-1", datetime.date(2025, 3, 1)).id == "mdb-1-202501"
+        assert db.dataset_for("mdb-1", "2024-01-01") is None
+
+
+def test_dataset_for_rejects_non_dates(tmp_path):
+    with make_db({}, tmp_path) as db:
+        with pytest.raises(TypeError):
+            db.dataset_for("mdb-1", 20260901)
+
+
+def test_download_verifies_checksum_and_caches(tmp_path):
+    payload = b"PK\x03\x04 fake gtfs zip"
+    record = dict(DATASET_RECORD, hash=hashlib.sha256(payload).hexdigest())
+    dataset = Dataset.from_api(record)
+    requests = []
+    routes = {"/mdb-1-202606.zip": lambda request: httpx.Response(200, content=payload)}
+    with make_db(routes, tmp_path, requests) as db:
+        path = db.download(dataset)
+        assert path.read_bytes() == payload
+
+        provenance = json.loads(path.with_suffix(".provenance.json").read_text())
+        assert provenance["dataset_id"] == "mdb-1-202606"
+        assert provenance["sha256"] == record["hash"]
+        assert provenance["service_date_range"] == ["2026-06-15", "2026-12-13"]
+
+        assert db.download(dataset) == path
+
+    downloads = api_requests(requests, "/mdb-1-202606.zip")
+    assert len(downloads) == 1
+    assert "Authorization" not in downloads[0].headers
+
+
+def test_download_checksum_mismatch(tmp_path):
+    record = dict(DATASET_RECORD, hash="0" * 64)
+    dataset = Dataset.from_api(record)
+    routes = {"/mdb-1-202606.zip": lambda request: httpx.Response(200, content=b"junk")}
+    with make_db(routes, tmp_path) as db:
+        with pytest.raises(DownloadError, match="checksum mismatch"):
+            db.download(dataset)
+    assert not list(tmp_path.rglob("*.zip"))
+    assert not list(tmp_path.rglob("*.part"))
+
+
+def test_validation_report(tmp_path):
+    report = {"summary": {"validatorVersion": "6.0.0"}, "notices": []}
+    routes = {"/report.json": report}
+    with make_db(routes, tmp_path) as db:
+        assert db.validation_report(Dataset.from_api(DATASET_RECORD)) == report
+        assert db.validation_report(Dataset.from_api(OLD_DATASET_RECORD)) is None
+
+
+def test_missing_token_raises(tmp_path, monkeypatch):
+    monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
+    with make_db({}, tmp_path, token=None) as db:
+        with pytest.raises(MissingTokenError, match="refresh token"):
+            db.search_feeds(country_code="FI")
+
+
+def test_token_from_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv(TOKEN_ENV_VAR, "env-token")
+    requests = []
+    routes = {"/v1/gtfs_feeds": [FEED_RECORD]}
+    with make_db(routes, tmp_path, requests, token=None) as db:
+        db.search_feeds(country_code="FI")
+    (token_request,) = api_requests(requests, "/v1/tokens")
+    assert json.loads(token_request.content) == {"refresh_token": "env-token"}
+
+
+def test_retry_on_transient_errors(tmp_path):
+    attempts = []
+
+    def flaky(request):
+        attempts.append(request)
+        if len(attempts) < 3:
+            return httpx.Response(429)
+        return httpx.Response(200, json=[FEED_RECORD])
+
+    routes = {"/v1/gtfs_feeds": flaky}
+    with make_db(routes, tmp_path) as db:
+        feeds = db.search_feeds(country_code="FI")
+    assert len(feeds) == 1
+    assert len(attempts) == 3
+
+
+def test_expired_access_token_is_refreshed_once(tmp_path):
+    calls = {"feeds": 0, "tokens": 0}
+
+    def feeds_endpoint(request):
+        calls["feeds"] += 1
+        if calls["feeds"] == 1:
+            return httpx.Response(401)
+        return httpx.Response(200, json=[FEED_RECORD])
+
+    routes = {"/v1/gtfs_feeds": feeds_endpoint}
+    requests = []
+    with make_db(routes, tmp_path, requests) as db:
+        feeds = db.search_feeds(country_code="FI")
+    assert len(feeds) == 1
+    assert len(api_requests(requests, "/v1/tokens")) == 2

@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["crates/beanpicker-py"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py310"] }
+
+[profile.release]
+lto = "thin"
+
+[profile.dev.package."*"]
+opt-level = 2
