@@ -1,0 +1,41 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "beanpicker"
+description = "AOI-driven OSM and GTFS acquisition, validation and repair — companion to pyrosm and cafein"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Henrikki Tenkanen" }]
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+    "platformdirs>=3",
+    "shapely>=2.0",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dynamic = ["version"]
+
+[tool.maturin]
+manifest-path = "crates/beanpicker-py/Cargo.toml"
+python-source = "python"
+module-name = "beanpicker._core"
+include = [{ path = "LICENSE", format = "sdist" }]
+
+[tool.black]
+include = '(python/beanpicker|tests)/.*\.py$'
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
