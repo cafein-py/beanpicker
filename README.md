@@ -5,23 +5,48 @@ AOI-driven OSM and GTFS acquisition, validation and repair — companion to
 and prepares the raw beans (OSM and GTFS data) that cafein brews into routing
 results.
 
-**Status: early development.** The Mobility Database catalog client is the
-first working piece; discovery, download, validation and repair modules follow
-the roadmap in the project plan.
+**Status: early development.** Acquisition (Mobility Database catalog + OSM
+extracts), GTFS validation, repair and cropping are in place, tied together by
+the one-call `beanpicker.fetch` pipeline.
 
 ## Quick example
 
 ```python
 import beanpicker
 
-# Requires a (free) Mobility Database refresh token, either passed
-# explicitly or set as the MOBILITY_API_REFRESH_TOKEN environment variable.
+# One call: OSM extract + validated GTFS feeds for an area of interest.
+result = beanpicker.fetch(helsinki_polygon)        # any shapely geometry,
+                                                   # bbox tuple or place name
+result.osm_pbf     # cropped OSM extract (path)
+result.feeds       # downloaded, cropped and validated GTFS feeds (paths)
+result.reports     # per-feed merged validation reports
+result.skipped     # (feed id, reason) for anything left out
+```
+
+`fetch` accepts `when="2026-09-01"` to pick the dataset versions covering a
+service day (needs a free Mobility Database API token, passed as
+`refresh_token=` or via the `MOBILITY_API_REFRESH_TOKEN` environment
+variable), `modes=["rail", "tram"]` to keep only feeds serving given modes,
+and `repair=True` to repair feeds before use. With a token, GTFS downloads
+are catalogued dataset versions verified against catalog checksums; without
+one, the latest hosted zips are fetched as-is — unverified moving targets.
+
+### Lower-level access
+
+Each pipeline stage is available on its own:
+
+```python
 db = beanpicker.MobilityDatabase()
 
-feeds = db.search_feeds(aoi=helsinki_polygon)      # any shapely geometry
+feeds = db.search_feeds(aoi=helsinki_polygon)
 dataset = db.dataset_for(feeds[0], when="2026-09-01")
 path = db.download(dataset)                        # cached, checksum-verified
 report = db.validation_report(dataset)             # hosted canonical-validator report
+
+pbf = beanpicker.fetch_pbf(helsinki_polygon)       # cropped OSM extract
+validation = beanpicker.validate_feed(path)        # canonical-code notices
+beanpicker.repair_feed(path, "repaired.zip")       # gtfstidy-contract repair
+beanpicker.crop_feed(path, "cropped.zip", aoi=helsinki_polygon)
 ```
 
 ## Installation

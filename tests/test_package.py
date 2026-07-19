@@ -7,6 +7,8 @@ def test_public_names_importable():
     assert beanpicker.MobilityDatabase is not None
     assert beanpicker.Feed is not None
     assert beanpicker.Dataset is not None
+    assert beanpicker.fetch is beanpicker.pipeline.fetch
+    assert beanpicker.FetchResult is beanpicker.pipeline.FetchResult
 
 
 def test_exceptions_hierarchy():
