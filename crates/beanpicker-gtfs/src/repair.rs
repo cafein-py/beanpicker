@@ -111,6 +111,14 @@ pub fn repair(path: &Path, output: &Path, options: ScanOptions) -> Result<Repair
     // Write to a temporary sibling, revalidate it, then move it into
     // place, so a failure never leaves a truncated file at `output`.
     let staging = output.with_extension("zip.part");
+    if staging
+        .symlink_metadata()
+        .map(|m| m.is_symlink())
+        .unwrap_or(false)
+    {
+        return Err("staging path is a symlink; refusing to follow it".to_string());
+    }
+    let _ = std::fs::remove_file(&staging);
     write_zip(&result.tables, &staging)?;
 
     // The returned validation describes the REPAIRED feed, so callers see
@@ -496,7 +504,7 @@ fn retain_rows(
 }
 
 /// Write the repaired tables to a fresh zip with RFC 4180 quoting.
-fn write_zip(tables: &BTreeMap<String, Table>, output: &Path) -> Result<(), String> {
+pub(crate) fn write_zip(tables: &BTreeMap<String, Table>, output: &Path) -> Result<(), String> {
     let file = std::fs::File::create(output)
         .map_err(|e| format!("cannot create {}: {e}", output.display()))?;
     let mut writer = zip::ZipWriter::new(file);
