@@ -28,27 +28,27 @@ pub fn run_rules(result: &mut ScanResult, options: &ScanOptions) {
     result.notices.append(&mut notices);
 }
 
-struct Samplers {
+pub(crate) struct Samplers {
     cap: u64,
     by_file: BTreeMap<String, Sampler>,
 }
 
 impl Samplers {
-    fn new(cap: u64) -> Self {
+    pub(crate) fn new(cap: u64) -> Self {
         Samplers {
             cap,
             by_file: BTreeMap::new(),
         }
     }
 
-    fn file(&mut self, file: &str) -> &mut Sampler {
+    pub(crate) fn file(&mut self, file: &str) -> &mut Sampler {
         let cap = self.cap;
         self.by_file
             .entry(file.to_string())
             .or_insert_with(|| Sampler::new(cap))
     }
 
-    fn finish(self, notices: &mut Vec<Notice>) {
+    pub(crate) fn finish(self, notices: &mut Vec<Notice>) {
         for (file, sampler) in self.by_file {
             sampler.finish(notices, &file);
         }
@@ -57,7 +57,7 @@ impl Samplers {
 
 /// Per-file sampling with separate error/warning quotas, mirroring the
 /// structural pass: floods of one severity never crowd out the other.
-struct Sampler {
+pub(crate) struct Sampler {
     cap: u64,
     errors: u64,
     warnings: u64,
@@ -72,7 +72,7 @@ impl Sampler {
         }
     }
 
-    fn push(&mut self, notices: &mut Vec<Notice>, notice: Notice) {
+    pub(crate) fn push(&mut self, notices: &mut Vec<Notice>, notice: Notice) {
         let counter = if notice.severity == Severity::Error {
             &mut self.errors
         } else {
@@ -104,7 +104,7 @@ impl Sampler {
 
 /// Untrusted values are clipped before they enter notices, so hostile
 /// megabyte-sized fields cannot amplify the serialized report.
-fn clip(value: &str) -> String {
+pub(crate) fn clip(value: &str) -> String {
     const LIMIT: usize = 120;
     if value.chars().count() <= LIMIT {
         value.to_string()
@@ -406,7 +406,7 @@ fn is_valid_date(value: &str) -> bool {
 }
 
 /// GTFS times allow hours beyond 24 for over-midnight service.
-fn parse_gtfs_time(value: &str) -> Option<u64> {
+pub(crate) fn parse_gtfs_time(value: &str) -> Option<u64> {
     let mut parts = value.split(':');
     let (h, m, s) = (parts.next()?, parts.next()?, parts.next()?);
     if parts.next().is_some() || m.len() != 2 || s.len() != 2 || h.is_empty() || h.len() > 3 {

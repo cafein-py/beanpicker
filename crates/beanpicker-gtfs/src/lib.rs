@@ -7,6 +7,7 @@ pub mod notice;
 pub mod rules;
 pub mod scan;
 pub mod schema;
+pub mod semantics;
 
 pub use notice::{Notice, Severity};
 pub use scan::{
@@ -16,8 +17,12 @@ pub use scan::{
 
 /// The full current rule set: the structural scan plus the field-format and
 /// referential-integrity tiers.
-pub fn validate(path: &std::path::Path, options: ScanOptions) -> Result<ScanResult, String> {
+pub fn validate(path: &std::path::Path, mut options: ScanOptions) -> Result<ScanResult, String> {
+    if options.reference_date.is_none() {
+        options.reference_date = Some(chrono::Utc::now().date_naive());
+    }
     let mut result = scan::scan_with(path, options)?;
     rules::run_rules(&mut result, &options);
+    semantics::run_semantics(&mut result, &options);
     Ok(result)
 }
