@@ -21,6 +21,9 @@ result.osm_pbf     # cropped OSM extract (path)
 result.feeds       # downloaded, cropped and validated GTFS feeds (paths)
 result.reports     # per-feed merged validation reports
 result.skipped     # (feed id, reason) for anything left out
+
+net = result.to_cafein()   # routable cafein.TransportNetwork
+osm = result.to_pyrosm()   # pyrosm.OSM reader over the extract
 ```
 
 `fetch` accepts `when="2026-09-01"` to pick the dataset versions covering a

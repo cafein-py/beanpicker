@@ -7,6 +7,7 @@ import dataclasses
 import hashlib
 import io
 import json
+import os
 import pathlib
 import warnings
 import zipfile
@@ -41,6 +42,38 @@ class FetchResult:
 
     def __iter__(self):  # convenient (pbf, feeds) unpacking
         return iter((self.osm_pbf, self.feeds))
+
+    def to_cafein(self, **options):
+        """Build a routable ``cafein.TransportNetwork`` from this result.
+
+        The validated feeds and the OSM extract are handed to
+        ``cafein.TransportNetwork.from_gtfs``; keyword arguments pass
+        through (``walking_speed_kmph``, ``bounding_box``, ``ultra``,
+        ...), and ``osm_pbf=None`` builds without the walking network.
+
+        Requires the ``cafein`` package.
+        """
+        if not self.feeds:
+            raise ValueError("no feeds to build a network from")
+        try:
+            import cafein
+        except ImportError as error:
+            raise ImportError(
+                "the cafein package is required for to_cafein()"
+            ) from error
+        options.setdefault("osm_pbf", os.fspath(self.osm_pbf))
+        paths = [os.fspath(path) for path in self.feeds]
+        return cafein.TransportNetwork.from_gtfs(paths, **options)
+
+    def to_pyrosm(self, **options):
+        """Open the OSM extract as a ``pyrosm.OSM`` reader.
+
+        Keyword arguments pass through to ``pyrosm.OSM`` (for example
+        ``bounding_box`` to read a sub-area of the cropped extract).
+        """
+        from pyrosm import OSM
+
+        return OSM(os.fspath(self.osm_pbf), **options)
 
 
 def _feed_modes(path):
