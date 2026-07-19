@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Feed repair (``beanpicker.repair_feed``) under the gtfstidy contract:
+  fixable optional fields reset to spec defaults, dangling optional
+  references cleared in place, entities with unfixable errors dropped with
+  cascading removals to referential consistency, the repaired feed
+  rewritten as a fresh zip, and every action logged as a structured fix
+  record naming its trigger. Calling ``repair_feed`` is the opt-in;
+  validation never modifies feeds.
+
 - Real-feed integration harness: ``scripts/fetch_test_data.py`` downloads
   the r5py Helsinki sample data (GTFS + OSM extract, pinned by release tag
   and SHA-256, resume-capable) into the gitignored ``tests/data/``;
