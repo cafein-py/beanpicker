@@ -1,4 +1,4 @@
-use pyo3::exceptions::PyIOError;
+use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
 
 /// Run the structural scan on a GTFS zip; returns the report as a JSON
@@ -6,7 +6,8 @@ use pyo3::prelude::*;
 /// decodes. Serializing once here keeps the boundary to a single string
 /// instead of nested Python object construction.
 #[pyfunction]
-#[pyo3(signature = (path, *, max_entry_bytes=None, max_total_bytes=None, max_rows=None, max_columns=None, max_notices_per_file=None))]
+#[pyo3(signature = (path, *, max_entry_bytes=None, max_total_bytes=None, max_rows=None, max_columns=None, max_notices_per_file=None, reference_date=None))]
+#[allow(clippy::too_many_arguments)]
 fn scan_feed(
     py: Python<'_>,
     path: std::path::PathBuf,
@@ -15,6 +16,7 @@ fn scan_feed(
     max_rows: Option<u64>,
     max_columns: Option<usize>,
     max_notices_per_file: Option<u64>,
+    reference_date: Option<&str>,
 ) -> PyResult<String> {
     let mut options = beanpicker_gtfs::ScanOptions::default();
     if let Some(value) = max_entry_bytes {
@@ -32,6 +34,11 @@ fn scan_feed(
     if let Some(value) = max_notices_per_file {
         options.max_notices_per_file = value;
     }
+    if let Some(value) = reference_date {
+        let parsed = chrono::NaiveDate::parse_from_str(value.trim(), "%Y%m%d")
+            .map_err(|_| PyValueError::new_err(format!("invalid reference_date: {value:?}")))?;
+        options.reference_date = Some(parsed);
+    }
     // The whole scan (I/O, decompression, parsing, serialization) runs
     // without the GIL; only the result crosses back into Python.
     py.allow_threads(move || {
@@ -43,6 +50,7 @@ fn scan_feed(
         let report = serde_json::json!({
             "notices": result.notices,
             "row_counts": row_counts,
+            "service_window": result.service_window,
         });
         Ok(report.to_string())
     })

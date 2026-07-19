@@ -8,6 +8,7 @@ edition = "2021"
 license = "MIT"
 
 [workspace.dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 chrono-tz = "0.10"
 csv = "1.4"
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py310"] }

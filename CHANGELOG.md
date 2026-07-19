@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Semantic rule tier: stop-time progression and trip usability (including
+  arrival/departure ordering, trip edges and travelled-distance
+  monotonicity), calendar activity with ``expired_calendar`` against a
+  configurable reference date, block-overlap detection with true
+  service-day intersection, frequency-window overlaps, and shape distance,
+  usage and single-point checks — all codes and severities verified against
+  the canonical validator source. ``validate_feed`` reports the computed
+  ``service_window`` so catalog-published dataset ranges can be verified
+  against actual calendars.
+
 - Field-format and referential-integrity rule tier: typed per-column
   validation (dates, GTFS over-midnight times, integers/floats with ranges,
   enumerations, IANA timezones, coordinates with near-origin/near-pole

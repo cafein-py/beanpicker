@@ -14,6 +14,7 @@ def validate_feed(
     max_rows=None,
     max_columns=None,
     max_notices_per_file=None,
+    reference_date=None,
 ):
     """Validate a GTFS zip and return the collected notices.
 
@@ -48,13 +49,19 @@ def validate_feed(
     max_notices_per_file : int, optional
         Row-level notices retained per file (default 10000); further
         occurrences are counted in a ``notice_limit_reached`` notice.
+    reference_date : str, optional
+        ``YYYYMMDD`` day for calendar-expiry checks; defaults to today.
 
     Returns
     -------
     dict
-        ``{"notices": [...], "row_counts": {...}}``. Each notice carries
-        ``code``, ``severity`` (``ERROR``/``WARNING``/``INFO``) and a
-        ``context`` mapping with the notice-specific fields.
+        ``{"notices": [...], "row_counts": {...}, "service_window": ...}``.
+        Each notice carries ``code``, ``severity``
+        (``ERROR``/``WARNING``/``INFO``) and a ``context`` mapping with the
+        notice-specific fields. ``service_window`` is the actual computed
+        service-day span as a ``[start, end]`` pair of ``YYYYMMDD`` strings
+        (or ``None``) — use it to verify the optimistic published dataset
+        ranges from the catalog.
 
     Raises
     ------
@@ -73,5 +80,6 @@ def validate_feed(
             max_rows=max_rows,
             max_columns=max_columns,
             max_notices_per_file=max_notices_per_file,
+            reference_date=reference_date,
         )
     )

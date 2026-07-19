@@ -173,8 +173,35 @@ def test_field_rules_reach_python(tmp_path):
 
 
 def test_minimal_feed_clean_across_all_tiers(tmp_path):
-    report = validate_feed(write_zip(tmp_path / "feed.zip", MINIMAL))
+    report = validate_feed(
+        write_zip(tmp_path / "feed.zip", MINIMAL), reference_date="20260601"
+    )
     assert errors(report) == []
+
+
+def test_semantic_tier_and_service_window(tmp_path):
+    files = dict(
+        MINIMAL,
+        **{
+            "stop_times.txt": (
+                "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+                "t1,08:10:00,08:10:00,s1,1\n"
+                "t1,08:05:00,08:05:00,s2,2\n"
+            )
+        },
+    )
+    report = validate_feed(
+        write_zip(tmp_path / "feed.zip", files), reference_date="20260601"
+    )
+    assert "stop_time_with_arrival_before_previous_departure_time" in codes(report)
+    assert report["service_window"] == ["20260101", "20261231"]
+
+
+def test_expired_calendar_uses_reference_date(tmp_path):
+    report = validate_feed(
+        write_zip(tmp_path / "feed.zip", MINIMAL), reference_date="20270601"
+    )
+    assert "expired_calendar" in codes(report)
 
 
 def test_row_cap_is_configurable(tmp_path):

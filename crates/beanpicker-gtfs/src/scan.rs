@@ -41,6 +41,9 @@ pub struct ScanOptions {
     pub max_rows: u64,
     pub max_columns: usize,
     pub max_notices_per_file: u64,
+    /// Reference day for expiry checks; `None` disables them. `validate`
+    /// defaults it to the current date.
+    pub reference_date: Option<chrono::NaiveDate>,
 }
 
 impl Default for ScanOptions {
@@ -51,6 +54,7 @@ impl Default for ScanOptions {
             max_rows: DEFAULT_MAX_ROWS,
             max_columns: DEFAULT_MAX_COLUMNS,
             max_notices_per_file: DEFAULT_MAX_NOTICES_PER_FILE,
+            reference_date: None,
         }
     }
 }
@@ -76,6 +80,9 @@ pub struct ScanResult {
     /// cap, unreadable, refused as duplicates, or header-unparseable.
     /// Reference checks must not treat their ID sets as exhaustive.
     pub incomplete: std::collections::BTreeSet<String>,
+    /// Actual service-day window computed from the calendars; None until
+    /// the semantic tier runs (or when no service is active at all).
+    pub service_window: Option<(String, String)>,
 }
 
 pub fn scan(path: &Path) -> Result<ScanResult, String> {
@@ -224,6 +231,7 @@ pub fn scan_reader_with<R: Read + Seek>(
         tables,
         notices,
         incomplete,
+        service_window: None,
     })
 }
 
