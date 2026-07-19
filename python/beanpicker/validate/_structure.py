@@ -1,0 +1,72 @@
+"""Structural validation over the Rust core."""
+
+from __future__ import annotations
+
+import json
+import os
+
+
+def validate_feed(
+    path,
+    *,
+    max_entry_bytes=None,
+    max_total_bytes=None,
+    max_rows=None,
+    max_columns=None,
+    max_notices_per_file=None,
+):
+    """Validate a GTFS zip and return the collected notices.
+
+    The current rule set is the structural tier of beanpicker's
+    routing-oriented catalogue: file presence, column shape, row shape and
+    primary-key uniqueness. Field-format and semantic rules are added
+    incrementally. Notice codes and severities follow the canonical
+    gtfs-validator naming; the canonical *grouped report* rendering that
+    merges these notices with hosted validation reports is provided by the
+    upcoming report module, not by this function's flat notice list.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path of the GTFS ``.zip`` file.
+    max_entry_bytes : int, optional
+        Uncompressed-size budget per archive entry (default 1 GiB). A file
+        over budget is reported as ``unreadable_file`` and skipped.
+    max_total_bytes : int, optional
+        Cumulative uncompressed-size budget (default 2 GiB), enforced while
+        reading.
+    max_rows : int, optional
+        Rows retained per file (default 20 million); reading past the cap
+        raises a ``too_many_rows`` notice and stops for that file.
+    max_columns : int, optional
+        Column-count guard per file (default 1000).
+    max_notices_per_file : int, optional
+        Row-level notices retained per file (default 10000); further
+        occurrences are counted in a ``notice_limit_reached`` notice.
+
+    Returns
+    -------
+    dict
+        ``{"notices": [...], "row_counts": {...}}``. Each notice carries
+        ``code``, ``severity`` (``ERROR``/``WARNING``/``INFO``) and a
+        ``context`` mapping with the notice-specific fields.
+
+    Raises
+    ------
+    OSError
+        If the file cannot be opened or is not a readable zip archive.
+    """
+    from beanpicker import _core
+
+    # fspath (not str) preserves the platform path representation, so
+    # non-UTF-8 filenames on Unix survive the boundary.
+    return json.loads(
+        _core.scan_feed(
+            os.fspath(path),
+            max_entry_bytes=max_entry_bytes,
+            max_total_bytes=max_total_bytes,
+            max_rows=max_rows,
+            max_columns=max_columns,
+            max_notices_per_file=max_notices_per_file,
+        )
+    )
