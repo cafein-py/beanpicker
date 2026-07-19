@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Feed cropping (``beanpicker.crop_feed``): spatial cropping to an AOI
+  bounding box (trips serving the area with full stop sequences, or
+  strictly inside with ``full_trips_only``) and temporal cropping to a
+  service-date window, cascading stops, routes, shapes, calendars,
+  frequencies, transfers, pathways, fares and agencies to a referentially
+  consistent feed; retained trips keep their times and attributes
+  untouched. Same fail-closed budget, symlink and atomic-write behavior
+  as repair.
+
 - Feed repair (``beanpicker.repair_feed``) under the gtfstidy contract:
   fixable optional fields reset to spec defaults, dangling optional
   references cleared in place, entities with unfixable errors dropped with

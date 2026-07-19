@@ -22,6 +22,18 @@ const MAX_BLOCK_PAIR_CHECKS: usize = 10_000;
 /// hostile 100-hour times cannot force wide scans.
 const MAX_BLOCK_DAY_OFFSET: i64 = 7;
 
+/// Active service dates for other passes (cropping); notices generated
+/// during the computation are discarded.
+pub(crate) fn active_service_dates(
+    tables: &BTreeMap<String, Table>,
+    options: &ScanOptions,
+) -> HashMap<String, Vec<NaiveDate>> {
+    let mut samplers = Samplers::new(options.max_notices_per_file);
+    let mut scratch = Vec::new();
+    let (services, _) = service_calendars(tables, options, &mut samplers, &mut scratch);
+    services
+}
+
 pub fn run_semantics(result: &mut ScanResult, options: &ScanOptions) {
     let mut notices = Vec::new();
     let mut samplers = Samplers::new(options.max_notices_per_file);

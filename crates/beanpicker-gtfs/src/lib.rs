@@ -2,6 +2,7 @@
 //! collecting notices under the canonical gtfs-validator code convention,
 //! instead of failing hard on the first defect.
 
+pub mod crop;
 pub mod fields;
 pub mod notice;
 pub mod repair;
@@ -10,6 +11,7 @@ pub mod scan;
 pub mod schema;
 pub mod semantics;
 
+pub use crop::{crop, CropOptions, CropResult};
 pub use notice::{Notice, Severity};
 pub use repair::{repair, Fix, RepairResult};
 pub use scan::{
