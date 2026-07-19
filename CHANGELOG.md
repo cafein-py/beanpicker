@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Handoff helpers on ``FetchResult``: ``to_cafein()`` builds a routable
+  ``cafein.TransportNetwork`` from the validated feeds and OSM extract
+  (keyword arguments pass through to ``TransportNetwork.from_gtfs``), and
+  ``to_pyrosm()`` opens the extract as a ``pyrosm.OSM`` reader.
+
 - One-call pipeline (``beanpicker.fetch``): resolves the OSM extract for an
   AOI, discovers every overlapping GTFS feed (ordered by the documented
   preference: official, active, most spatially specific), selects the

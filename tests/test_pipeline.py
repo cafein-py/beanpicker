@@ -236,3 +236,86 @@ def test_rank_prefers_official_active_specific():
         "mdb-4",  # official but inactive
         "mdb-3",  # unofficial
     ]
+
+
+def test_to_cafein_hands_feeds_and_pbf(tmp_path, monkeypatch):
+    import sys
+    import types
+
+    from beanpicker.pipeline import FetchResult
+
+    calls = {}
+
+    class FakeNetwork:
+        @classmethod
+        def from_gtfs(cls, paths, **options):
+            calls["paths"] = paths
+            calls["options"] = options
+            return "network"
+
+    fake = types.ModuleType("cafein")
+    fake.TransportNetwork = FakeNetwork
+    monkeypatch.setitem(sys.modules, "cafein", fake)
+
+    pbf = tmp_path / "aoi.osm.pbf"
+    feed = tmp_path / "feed.zip"
+    result = FetchResult(
+        osm_pbf=pbf, feeds=[feed], reports=[{}], repairs=[[]], skipped=[]
+    )
+    assert result.to_cafein(walking_speed_kmph=5.0) == "network"
+    assert calls["paths"] == [str(feed)]
+    assert calls["options"] == {"osm_pbf": str(pbf), "walking_speed_kmph": 5.0}
+
+    result.to_cafein(osm_pbf=None)
+    assert calls["options"] == {"osm_pbf": None}
+
+
+def test_to_cafein_without_feeds_or_cafein(tmp_path, monkeypatch):
+    import builtins
+    import sys
+
+    from beanpicker.pipeline import FetchResult
+
+    empty = FetchResult(
+        osm_pbf=tmp_path / "aoi.osm.pbf", feeds=[], reports=[], repairs=[], skipped=[]
+    )
+    with pytest.raises(ValueError, match="no feeds"):
+        empty.to_cafein()
+
+    result = FetchResult(
+        osm_pbf=tmp_path / "aoi.osm.pbf",
+        feeds=[tmp_path / "feed.zip"],
+        reports=[{}],
+        repairs=[[]],
+        skipped=[],
+    )
+    monkeypatch.delitem(sys.modules, "cafein", raising=False)
+    real_import = builtins.__import__
+
+    def no_cafein(name, *args, **kwargs):
+        if name == "cafein":
+            raise ImportError("No module named 'cafein'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_cafein)
+    with pytest.raises(ImportError, match="cafein package is required"):
+        result.to_cafein()
+
+
+def test_to_pyrosm_opens_extract(tmp_path, monkeypatch):
+    from beanpicker.pipeline import FetchResult
+
+    opened = {}
+
+    class FakeOSM:
+        def __init__(self, filepath, **options):
+            opened["filepath"] = filepath
+            opened["options"] = options
+
+    monkeypatch.setattr("pyrosm.OSM", FakeOSM)
+    pbf = tmp_path / "aoi.osm.pbf"
+    result = FetchResult(osm_pbf=pbf, feeds=[], reports=[], repairs=[], skipped=[])
+    reader = result.to_pyrosm(bounding_box=[24.6, 60.1, 25.2, 60.4])
+    assert isinstance(reader, FakeOSM)
+    assert opened["filepath"] == str(pbf)
+    assert opened["options"] == {"bounding_box": [24.6, 60.1, 25.2, 60.4]}
