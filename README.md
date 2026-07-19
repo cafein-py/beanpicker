@@ -52,6 +52,18 @@ beanpicker.repair_feed(path, "repaired.zip")       # gtfstidy-contract repair
 beanpicker.crop_feed(path, "cropped.zip", aoi=helsinki_polygon)
 ```
 
+## Documentation
+
+The Sphinx site lives in `docs/`. Building it needs beanpicker itself
+installed (autodoc imports the real package) plus the Sphinx toolchain:
+
+```
+pip install . -r docs/requirements.txt
+sphinx-build -b html docs docs/_build/html
+```
+
+A hosted version comes with the first release.
+
 ## Installation
 
 Not yet on PyPI. From source (requires a Rust toolchain):

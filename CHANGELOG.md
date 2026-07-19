@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Sphinx documentation site (``docs/``, sphinx-book-theme): landing page,
+  installation and quickstart guides, and an autosummary API reference over
+  the public surface; ``.readthedocs.yml`` builds it on Read the Docs with
+  the compiled package installed.
+
 - Benchmark suite: ``beanpicker.report.parity_summary`` buckets a merged
   report's notice codes into agreeing, count-disagreeing, local-only and
   canonical-only sets, and ``scripts/benchmark_validator.py`` times

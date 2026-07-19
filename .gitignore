@@ -18,6 +18,10 @@ htmlcov/
 tests/data/
 cache/
 
+# Sphinx build artifacts (docs/api holds generated autosummary stubs)
+docs/_build/
+docs/api/
+
 # Local planning and assistant files (not part of the library)
 plans/
 .claude/
