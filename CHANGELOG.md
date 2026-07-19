@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Report module (``beanpicker.report``): ``build_report`` groups local
+  notices by code in the canonical grouped convention and merges them with
+  a hosted canonical-validator report (per-code ``source`` local/hosted/
+  both), embeds the provenance block, computed service window and row
+  counts; ``render_markdown`` and ``render_html`` produce human-readable
+  renderings.
+
 - Semantic rule tier: stop-time progression and trip usability (including
   arrival/departure ordering, trip edges and travelled-distance
   monotonicity), calendar activity with ``expired_calendar`` against a
