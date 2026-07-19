@@ -57,9 +57,59 @@ fn scan_feed(
     .map_err(|e: String| PyIOError::new_err(e))
 }
 
+/// Repair a feed into `output` and return the fix log plus the
+/// post-parse validation notices as JSON.
+#[pyfunction]
+#[pyo3(signature = (path, output, *, max_entry_bytes=None, max_total_bytes=None, max_rows=None, max_columns=None, max_notices_per_file=None, reference_date=None))]
+#[allow(clippy::too_many_arguments)]
+fn repair_feed(
+    py: Python<'_>,
+    path: std::path::PathBuf,
+    output: std::path::PathBuf,
+    max_entry_bytes: Option<u64>,
+    max_total_bytes: Option<u64>,
+    max_rows: Option<u64>,
+    max_columns: Option<usize>,
+    max_notices_per_file: Option<u64>,
+    reference_date: Option<&str>,
+) -> PyResult<String> {
+    let mut options = beanpicker_gtfs::ScanOptions::default();
+    if let Some(value) = max_entry_bytes {
+        options.max_entry_bytes = value;
+    }
+    if let Some(value) = max_total_bytes {
+        options.max_total_bytes = value;
+    }
+    if let Some(value) = max_rows {
+        options.max_rows = value;
+    }
+    if let Some(value) = max_columns {
+        options.max_columns = value;
+    }
+    if let Some(value) = max_notices_per_file {
+        options.max_notices_per_file = value;
+    }
+    if let Some(value) = reference_date {
+        let parsed = chrono::NaiveDate::parse_from_str(value.trim(), "%Y%m%d")
+            .map_err(|_| PyValueError::new_err(format!("invalid reference_date: {value:?}")))?;
+        options.reference_date = Some(parsed);
+    }
+    py.allow_threads(move || {
+        let result = beanpicker_gtfs::repair(&path, &output, options)?;
+        let report = serde_json::json!({
+            "fixes": result.fixes,
+            "remaining_notices": result.validation.notices,
+            "service_window": result.validation.service_window,
+        });
+        Ok(report.to_string())
+    })
+    .map_err(|e: String| PyIOError::new_err(e))
+}
+
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_function(wrap_pyfunction!(scan_feed, m)?)?;
+    m.add_function(wrap_pyfunction!(repair_feed, m)?)?;
     Ok(())
 }
