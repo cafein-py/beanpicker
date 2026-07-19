@@ -7,6 +7,7 @@ __all__ = [
     "exceptions",
     "fetch_pbf",
     "osm",
+    "report",
     "validate",
     "validate_feed",
     "__version__",
@@ -26,7 +27,7 @@ def __getattr__(name):
         from beanpicker.validate import validate_feed
 
         return validate_feed
-    if name in ("exceptions", "osm", "validate"):
+    if name in ("exceptions", "osm", "report", "validate"):
         import importlib
 
         return importlib.import_module(f"beanpicker.{name}")
