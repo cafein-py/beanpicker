@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- One-call pipeline (``beanpicker.fetch``): resolves the OSM extract for an
+  AOI, discovers every overlapping GTFS feed (ordered by the documented
+  preference: official, active, most spatially specific), selects the
+  dataset version covering a requested service day (or the latest
+  versioned dataset) when a token is available, downloads with checksum
+  verification (token mode; the tokenless fallback fetches the latest
+  hosted zips unverified), optionally repairs, crops each feed to the AOI
+  by default, filters by coarse transport modes read from the delivered
+  feed's ``routes.txt``, validates and verifies the service window, and
+  returns
+  the paths with per-feed merged reports, repair logs and skip reasons in
+  a ``FetchResult``. Per-feed failures are recorded as skips, never
+  aborting the remaining feeds.
+
 - Feed cropping (``beanpicker.crop_feed``): spatial cropping to an AOI
   bounding box (trips serving the area with full stop sequences, or
   strictly inside with ``full_trips_only``) and temporal cropping to a

@@ -3,12 +3,15 @@
 __all__ = [
     "Dataset",
     "Feed",
+    "FetchResult",
     "MobilityDatabase",
     "exceptions",
     "crop_feed",
+    "fetch",
     "fetch_pbf",
     "gtfs",
     "osm",
+    "pipeline",
     "repair",
     "repair_feed",
     "report",
@@ -27,6 +30,10 @@ def __getattr__(name):
         from beanpicker.osm import fetch_pbf
 
         return fetch_pbf
+    if name in ("fetch", "FetchResult"):
+        from beanpicker import pipeline
+
+        return getattr(pipeline, name)
     if name == "crop_feed":
         from beanpicker.gtfs import crop_feed
 
@@ -39,7 +46,15 @@ def __getattr__(name):
         from beanpicker.validate import validate_feed
 
         return validate_feed
-    if name in ("exceptions", "gtfs", "osm", "repair", "report", "validate"):
+    if name in (
+        "exceptions",
+        "gtfs",
+        "osm",
+        "pipeline",
+        "repair",
+        "report",
+        "validate",
+    ):
         import importlib
 
         return importlib.import_module(f"beanpicker.{name}")
