@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/beanpicker-py"]
+members = ["crates/beanpicker-gtfs", "crates/beanpicker-py"]
 
 [workspace.package]
 version = "0.1.0"
@@ -8,7 +8,11 @@ edition = "2021"
 license = "MIT"
 
 [workspace.dependencies]
+csv = "1.4"
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py310"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+zip = "8.6"
 
 [profile.release]
 lto = "thin"

@@ -9,4 +9,6 @@ name = "_core"
 crate-type = ["cdylib"]
 
 [dependencies]
+beanpicker-gtfs = { path = "../beanpicker-gtfs" }
 pyo3 = { workspace = true }
+serde_json = { workspace = true }
