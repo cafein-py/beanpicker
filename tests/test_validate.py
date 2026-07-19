@@ -1,3 +1,4 @@
+import sys
 import zipfile
 
 import pytest
@@ -168,6 +169,8 @@ def test_not_a_zip_raises(tmp_path):
 
 
 def test_non_utf8_filename(tmp_path):
+    if sys.platform == "win32":
+        pytest.skip("lone-surrogate names hit a PyO3 str->PathBuf panic on Windows")
     name = b"feed-\xe4.zip".decode("utf-8", "surrogateescape")
     path = tmp_path / name
     try:
