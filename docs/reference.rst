@@ -47,6 +47,29 @@ OSM extracts
 
    fetch_pbf
 
+Editing and building feeds
+--------------------------
+
+.. autosummary::
+   :toctree: api/
+
+   FeedBuilder
+   FeedBuilder.add_agency
+   FeedBuilder.add_stop
+   FeedBuilder.add_route
+   FeedBuilder.add_service
+   FeedBuilder.add_trip
+   FeedBuilder.add_frequency_trip
+   FeedBuilder.stops
+   FeedBuilder.set_stops
+   FeedBuilder.save
+   FeedEditor
+   FeedEditor.update_stop
+   FeedEditor.update_route
+   FeedEditor.set_headway
+   FeedEditor.shift_trip
+   FeedEditor.drop_route
+
 Validation, repair and cropping
 -------------------------------
 
@@ -79,6 +102,7 @@ Exceptions
    :toctree: api/
 
    TransitioError
+   InvalidFeedError
    MissingTokenError
    DownloadError
    ExtractNotFoundError

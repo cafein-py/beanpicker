@@ -15,3 +15,12 @@ class DownloadError(TransitioError):
 
 class ExtractNotFoundError(TransitioError):
     """No OSM extract covers the requested area."""
+
+
+class InvalidFeedError(TransitioError):
+    """A saved feed has error-severity validation notices.
+
+    The full validation report is available as :attr:`report`.
+    """
+
+    report = None
