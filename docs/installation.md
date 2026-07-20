@@ -4,8 +4,6 @@ transitio requires Python >= 3.10.
 
 ## From PyPI
 
-*(coming with the first release)*
-
 ```
 pip install transitio
 ```

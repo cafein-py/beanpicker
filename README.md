@@ -63,15 +63,16 @@ pip install . -r docs/requirements.txt
 sphinx-build -b html docs docs/_build/html
 ```
 
-A hosted version comes with the first release.
+The hosted version lives at https://transitio.readthedocs.io.
 
 ## Installation
 
-Not yet on PyPI. From source (requires a Rust toolchain):
+```
+pip install transitio
+```
 
-```
-pip install .
-```
+Binary wheels cover Linux, macOS and Windows. Building from source instead
+requires a Rust toolchain (`pip install .`).
 
 ## License
 
