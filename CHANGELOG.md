@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Feed editing and building (``transitio.FeedBuilder`` /
+  ``transitio.FeedEditor``): build a GTFS feed entity by entity
+  (agencies, stops, routes, calendars, scheduled and frequency-based
+  trips) or load an existing feed into pandas tables, mutate it
+  (``update_stop``, ``set_headway``, ``shift_trip``, ``drop_route``,
+  or direct DataFrame access), view stops as a WGS84 GeoDataFrame, and
+  save atomically with transitio's validator (canonical notice codes,
+  routing-oriented rule subset) run on every save —
+  error-severity notices raise ``InvalidFeedError`` (carrying the
+  report) unless ``check=False``. Unparsed archive entries survive the
+  round trip.
+
 ## 0.1.0 — 2026-07-20
 
 The first release. Developed pre-release under the working name

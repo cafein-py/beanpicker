@@ -3,10 +3,13 @@
 __all__ = [
     "Dataset",
     "Feed",
+    "FeedBuilder",
+    "FeedEditor",
     "FetchResult",
     "MobilityDatabase",
     "exceptions",
     "crop_feed",
+    "edit",
     "fetch",
     "fetch_pbf",
     "gtfs",
@@ -30,6 +33,10 @@ def __getattr__(name):
         from transitio.osm import fetch_pbf
 
         return fetch_pbf
+    if name in ("FeedBuilder", "FeedEditor"):
+        from transitio import edit
+
+        return getattr(edit, name)
     if name in ("fetch", "FetchResult"):
         from transitio import pipeline
 
@@ -47,6 +54,7 @@ def __getattr__(name):
 
         return validate_feed
     if name in (
+        "edit",
         "exceptions",
         "gtfs",
         "osm",
