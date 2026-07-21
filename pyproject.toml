@@ -32,7 +32,11 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+gui = ["fastapi>=0.110", "uvicorn>=0.29"]
 snap = ["networkx>=3"]
+
+[project.scripts]
+transitio = "transitio._cli:main"
 
 [project.urls]
 Homepage = "https://github.com/cafein-py/transitio"
