@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- GUI backend (``transitio edit feed.zip`` console command, optional
+  extra ``transitio[gui]``): a loopback FastAPI app over a
+  ``FeedEditor`` exposing table browsing, stop and shape GeoJSON,
+  mutation endpoints mirroring the editor helpers, a shape-snapping
+  endpoint backed by ``snap_to_network`` when an OSM extract is given,
+  and validated saving. The map UI ships in a following release; the
+  API is browsable at ``/api/docs``.
+
 - Scenario feeds from geodata (``transitio.build_feed``): reads route
   alignments from a GeoPackage/Shapefile or GeoDataFrame under a small
   attribute convention (mode, ``headway_min`` or per-period
