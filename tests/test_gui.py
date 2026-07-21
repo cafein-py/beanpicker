@@ -258,3 +258,53 @@ def test_host_header_guard_and_zip_target(editor, tmp_path):
         "/api/save", json={"path": str(tmp_path / "not-a-feed.txt")}
     )
     assert bad_target.status_code == 422
+
+
+def test_ui_and_static_assets_served(editor):
+    client = TestClient(create_app(editor))
+    index = client.get("/")
+    assert index.status_code == 200
+    assert "maplibre-gl.js" in index.text
+    assert "app.js" in index.text
+    for asset in (
+        "/static/app.js",
+        "/static/style.css",
+        "/static/vendor/maplibre-gl.js",
+        "/static/vendor/maplibre-gl.css",
+    ):
+        assert client.get(asset).status_code == 200
+
+    summary = client.get("/api/feed").json()
+    assert summary["snapAvailable"] is False
+    with_pbf = TestClient(create_app(editor, osm_pbf="fake.osm.pbf"))
+    assert with_pbf.get("/api/feed").json()["snapAvailable"] is True
+
+
+def test_foreign_origin_posts_are_refused(editor, tmp_path):
+    client = TestClient(create_app(editor))
+    refused = client.post(
+        "/api/save",
+        json={"path": str(tmp_path / "out.zip")},
+        headers={"origin": "https://evil.example"},
+    )
+    assert refused.status_code == 403
+
+    other_port = client.post(
+        "/api/save",
+        json={"path": str(tmp_path / "out.zip")},
+        headers={"origin": "http://127.0.0.1:9999"},
+    )
+    assert other_port.status_code == 403  # other localhost ports are foreign
+
+    allowed = client.post(
+        "/api/save",
+        json={"path": str(tmp_path / "out.zip")},
+        headers={"origin": "http://testserver"},
+    )
+    assert allowed.status_code == 200
+    # reads are unaffected by foreign origins (responses stay unreadable
+    # cross-origin anyway)
+    assert (
+        client.get("/api/feed", headers={"origin": "https://evil.example"}).status_code
+        == 200
+    )

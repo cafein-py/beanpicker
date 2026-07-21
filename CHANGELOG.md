@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Map UI for the editor: ``transitio edit feed.zip`` now serves a
+  MapLibre-based editing interface (vendored assets, no CDN; base map
+  tiles stream from openstreetmap.org) — stops render and can be added,
+  renamed and moved on the map; route shapes draw click by click with
+  optional street snapping when an OSM extract is given; routes,
+  agencies, services and frequency trips (stop sequence picked by
+  clicking stops) are created from sidebar forms; and Save & validate
+  reports the notice counts of the written feed.
+
 - GUI backend (``transitio edit feed.zip`` console command, optional
   extra ``transitio[gui]``): a loopback FastAPI app over a
   ``FeedEditor`` exposing table browsing, stop and shape GeoJSON,

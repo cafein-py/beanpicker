@@ -43,6 +43,19 @@ result = transitio.fetch(
 )
 ```
 
+## Editing a feed in the GUI
+
+```
+pip install "transitio[gui,snap]"
+transitio edit feed.zip --osm-pbf helsinki.osm.pbf
+```
+
+The editor opens on `http://127.0.0.1:8300`: stops and shapes render on
+a map where they can be added, moved and drawn — with the `--osm-pbf`
+extract, drawn route shapes snap to the street network, Remix-style.
+Saving runs the validator and reports the notice counts. The HTTP API
+behind the interface publishes its schema at `/openapi.json`.
+
 ## Scenario feeds from a GeoPackage
 
 Draw a planned network in any GIS tool, attach headway attributes, and
