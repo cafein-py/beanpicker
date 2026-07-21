@@ -51,7 +51,9 @@ def create_app(editor, *, osm_pbf=None, network_type="driving", allowed_hosts=No
 
     from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-    app = FastAPI(title="transitio editor", docs_url="/api/docs")
+    # The Swagger page would pull its assets from a CDN into this origin;
+    # the app stays CDN-free, and the schema remains at /openapi.json.
+    app = FastAPI(title="transitio editor", docs_url=None, redoc_url=None)
     # A malicious page cannot read loopback responses, but DNS rebinding
     # would let it send requests; pinning the Host header closes that.
     app.add_middleware(
@@ -62,6 +64,29 @@ def create_app(editor, *, osm_pbf=None, network_type="driving", allowed_hosts=No
             or ["127.0.0.1", "localhost", "[::1]", "testserver"]
         ),
     )
+
+    # Cross-origin "simple" POSTs carry the target's Host header, so the
+    # trusted-host guard alone does not stop CSRF; state-changing requests
+    # from a foreign Origin are refused instead.
+    @app.middleware("http")
+    async def reject_foreign_origins(request, call_next):
+        if request.method in ("POST", "PATCH", "PUT", "DELETE"):
+            origin = request.headers.get("origin")
+            if origin:
+                from urllib.parse import urlsplit
+
+                # Same-origin only: pages on OTHER localhost ports are
+                # foreign too; the Host header names this server's origin.
+                origin_netloc = urlsplit(origin).netloc
+                if origin_netloc != request.headers.get("host", ""):
+                    from fastapi.responses import JSONResponse
+
+                    return JSONResponse(
+                        {"detail": "cross-origin requests are not allowed"},
+                        status_code=403,
+                    )
+        return await call_next(request)
+
     # FastAPI runs sync handlers in a threadpool; one lock serializes
     # every touch of the shared editor.
     lock = threading.Lock()
@@ -72,14 +97,16 @@ def create_app(editor, *, osm_pbf=None, network_type="driving", allowed_hosts=No
             raise ValueError(f"{field} must be finite")
         return number
 
+    from pathlib import Path
+
+    from fastapi.staticfiles import StaticFiles
+
+    static_dir = Path(__file__).parent / "static"
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
     @app.get("/", response_class=HTMLResponse)
     def index():
-        return (
-            "<!doctype html><title>transitio editor</title>"
-            "<h1>transitio editor</h1>"
-            "<p>The map UI arrives in the next release; the HTTP API is "
-            'live — see <a href="/api/docs">/api/docs</a>.</p>'
-        )
+        return (static_dir / "index.html").read_text(encoding="utf-8")
 
     @app.get("/api/feed")
     def feed_summary():
@@ -89,6 +116,7 @@ def create_app(editor, *, osm_pbf=None, network_type="driving", allowed_hosts=No
     def _feed_summary():
         return {
             "source": (os.fspath(editor.source) if hasattr(editor, "source") else None),
+            "snapAvailable": osm_pbf is not None,
             "tables": {
                 name: len(table) for name, table in sorted(editor.tables.items())
             },
